@@ -1,0 +1,430 @@
+
+Comment: BlockComment | LineComment | NestingBlockComment;
+BlockComment: '/*' Characters '*/';
+LineComment: '//' Characters EndOfLine;
+NestingBlockComment: '/+' (Character | NestingBlockComment)+ '+/';
+Characters: Character+;
+
+NamedCharacterEntity:
+    '&' Identifier ;
+
+WhiteSpace: Space+;
+Space: ' ' | '  ';
+
+Tokens: Token+;
+
+Token:
+    Identifier
+    | StringLiteral
+    | CharacterLiteral
+    | IntegerLiteral
+    | FloatLiteral
+    | Keyword
+    | '/'
+    | '/='
+    | '.'
+    | '..'
+    | '...'
+    | '&'
+    | '&='
+    | '&&'
+    | '|'
+    | '|='
+    | '||'
+    | '-'
+    | '-='
+    | '--'
+    | '+'
+    | '+='
+    | '++'
+    | '<'
+    | '<='
+    | '<<'
+    | '<<='
+    | '>'
+    | '>='
+    | '>>='
+    | '>>>='
+    | '>>'
+    | '>>>'
+    | '!'
+    | '!='
+    | '('
+    | ')'
+    | '['
+    | ']'
+    | '{'
+    | '}'
+    | '?'
+    | ','
+    | ';'
+    | ':'
+    | '$'
+    | '='
+    | '=='
+    | '*'
+    | '*='
+    | '%'
+    | '%='
+    | '^'
+    | '^='
+    | '^^'
+    | '^^='
+    | '~'
+    | '~='
+    | '@'
+    | '=>'
+    | '#'
+    ;
+
+Identifier:
+    IdentifierStart
+    | IdentifierStart IdentifierChar+;
+IdentifierStart: '_' | Letter | UniversalAlpha;
+IdentifierChar: IdentifierStart | '0' | NonZeroDigit;
+
+
+StringLiteral:
+    WysiwygString
+    | AlternateWysiwygString
+    | DoubleQuotedString
+    | HexString
+    | DelimitedString
+    | TokenString
+    ;
+
+WysiwygString:
+    'r"' WysiwygCharacters '"' StringPostfix;
+
+AlternateWysiwygString:
+    '`' WysiwygCharacters '`' StringPostfix;
+
+WysiwygCharacters: WysiwygCharacter+;
+
+WysiwygCharacter: Character | EndOfLine;
+
+DoubleQuotedString:
+    '"' DoubleQuotedCharacter+ '"' StringPostfix;
+
+DoubleQuotedCharacter:
+    Character
+    | EscapeSequence
+    | EndOfLine;
+
+EscapeSequence:
+    "'"
+    | '"'
+    | '?'
+    | '\'
+    | '\0'
+    | '\a'
+    | '\b'
+    | '\f'
+    | '\n'
+    | '\r'
+    | '\t'
+    | '\v'
+    | '\x' HexDigit HexDigit
+    |  OctalDigit
+    |  OctalDigit OctalDigit
+    |  OctalDigit OctalDigit OctalDigit
+    | '\u' HexDigit HexDigit HexDigit HexDigit
+    | '\U' HexDigit HexDigit HexDigit HexDigit HexDigit HexDigit HexDigit HexDigit
+     NamedCharacterEntity;
+
+HexString: 'x"' (HexDigit | WhiteSpace | EndOfLine)+ '"' StringPostfix;
+StringPostfix: 'c' | 'w' | 'd';
+DelimitedString: 
+      'q"' '[' WysiwygCharacters ']' '"'
+    | 'q"' '(' WysiwygCharacters ')' '"'
+    | 'q"' '<' WysiwygCharacters '>' '"'
+    | 'q"' '{' WysiwygCharacters '}' '"';
+
+
+
+TokenString: 'q{' Tokens '}';
+
+CharacterLiteral: "'" SingleQuotedCharacter "'";
+SingleQuotedCharacter: Character | EscapeSequence;
+
+
+IntegerLiteral: Integer | Integer IntegerSuffix;
+Integer: DecimalInteger | BinaryInteger | HexadecimalInteger;
+IntegerSuffix: 'L' | 'u' | 'U' | 'Lu' | 'LU' | 'uL' | 'UL' ;
+
+DecimalInteger:
+    '0'
+    | NonZeroDigit
+    | NonZeroDigit DecimalDigitsUS ;
+
+BinaryInteger:
+    BinPrefix BinaryDigitsNoSingleUS ;
+
+BinPrefix: '0b' | '0B' ;
+
+HexadecimalInteger:
+    HexPrefix HexDigitsNoSingleUS ;
+
+NonZeroDigit: '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9';
+
+DecimalDigits: DecimalDigit+;
+
+DecimalDigitsUS: DecimalDigitUS+;
+
+DecimalDigitsNoSingleUS:
+    DecimalDigit
+    | DecimalDigit DecimalDigitsUS
+    | DecimalDigitsUS DecimalDigit;
+
+DecimalDigitsNoStartingUS:
+    DecimalDigit
+    | DecimalDigit DecimalDigitsUS;
+
+DecimalDigit:
+    '0' |
+    NonZeroDigit ;
+
+DecimalDigitUS:
+    DecimalDigit | '_';
+
+BinaryDigitsNoSingleUS:
+    BinaryDigit
+    | BinaryDigit BinaryDigitsUS
+    | BinaryDigitsUS BinaryDigit
+    | BinaryDigitsUS BinaryDigit BinaryDigitsUS;
+
+BinaryDigitsUS:
+    BinaryDigitUS
+    | BinaryDigitUS BinaryDigitsUS;
+
+BinaryDigit: '0' | '1';
+BinaryDigitUS: BinaryDigit | '_';
+OctalDigit: '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7';
+
+HexDigits:   HexDigit+;
+HexDigitsUS: HexDigitUS+;
+
+HexDigitsNoSingleUS:
+    HexDigit
+    | HexDigit HexDigitsUS
+    | HexDigitsUS HexDigit;
+
+HexDigitsNoStartingUS:
+    HexDigit
+    | HexDigit HexDigitsUS;
+
+HexDigit:
+    DecimalDigit
+    | HexLetter;
+
+HexDigitUS:
+    HexDigit
+    | '_';
+
+HexLetter: 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
+
+
+FloatLiteral:
+    Float
+    | Float Suffix
+    | Integer FloatSuffix
+    | Integer ImaginarySuffix
+    | Integer FloatSuffix ImaginarySuffix
+    | Integer RealSuffix ImaginarySuffix ;
+
+Float:
+    DecimalFloat
+    | HexFloat ;
+
+DecimalFloat:
+    LeadingDecimal '.'
+    | LeadingDecimal '.' DecimalDigits
+    | DecimalDigits '.' DecimalDigitsNoStartingUS DecimalExponent
+    | '.' DecimalInteger
+    | '.' DecimalInteger DecimalExponent
+    | LeadingDecimal DecimalExponent;
+
+DecimalExponent:
+    DecimalExponentStart | DecimalDigitsNoSingleUS;
+
+DecimalExponentStart: 'e' | 'E' | 'e'+ | 'E+' | 'e-' | 'E-';
+
+HexFloat:
+    HexPrefix HexDigitsNoSingleUS '.' HexDigitsNoStartingUS HexExponent
+    | HexPrefix '.' HexDigitsNoStartingUS HexExponent
+    | HexPrefix HexDigitsNoSingleUS HexExponent;
+
+HexPrefix: '0x' | '0X';
+
+HexExponent:
+    HexExponentStart DecimalDigitsNoSingleUS;
+
+HexExponentStart:
+    'p'
+    | 'P'
+    | 'p+'
+    | 'P+'
+    | 'p-'
+    | 'P-';
+
+
+Suffix:
+    FloatSuffix
+    | RealSuffix
+    | ImaginarySuffix
+    | FloatSuffix ImaginarySuffix
+    | RealSuffix ImaginarySuffix ;
+
+FloatSuffix:
+    'f'| 'F';
+
+RealSuffix:
+    'L';
+
+ImaginarySuffix:
+    'i';
+
+LeadingDecimal:
+    DecimalInteger
+    | '0' DecimalDigitsNoSingleUS;
+
+
+Keyword:
+    'abstract'
+    | 'alias'
+    | 'align'
+    | 'asm'
+    | 'assert'
+    | 'auto'
+
+    | 'body'
+    | 'bool'
+    | 'break'
+    | 'byte'
+
+    | 'case'
+    | 'cast'
+    | 'catch'
+    | 'cdouble'
+    | 'cent'
+    | 'cfloat'
+    | 'char'
+    | 'class'
+    | 'const'
+    | 'continue'
+    | 'creal'
+
+    | 'dchar'
+    | 'debug'
+    | 'default'
+    | 'delegate'
+    | 'delete'
+    | 'deprecated'
+    | 'do'
+    | 'double'
+
+    | 'else'
+    | 'enum'
+    | 'export'
+    | 'extern'
+
+    | 'false'
+    | 'final'
+    | 'finally'
+    | 'float'
+    | 'for'
+    | 'foreach'
+    | 'foreach_reverse'
+    | 'function'
+
+    | 'goto'
+
+    | 'idouble'
+    | 'if'
+    | 'ifloat'
+    | 'immutable'
+    | 'import'
+    | 'in'
+    | 'inout'
+    | 'int'
+    | 'interface'
+    | 'invariant'
+    | 'ireal'
+    | 'is'
+
+    | 'lazy'
+    | 'long'
+
+    | 'macro'
+    | 'mixin'
+    | 'module'
+
+    | 'new'
+    | 'nothrow'
+    | 'null'
+
+    | 'out'
+    | 'override'
+
+    | 'package'
+    | 'pragma'
+    | 'private'
+    | 'protected'
+    | 'public'
+    | 'pure'
+
+    | 'real'
+    | 'ref'
+    | 'return'
+
+    | 'scope'
+    | 'shared'
+    | 'short'
+    | 'static'
+    | 'struct'
+    | 'super'
+    | 'switch'
+    | 'synchronized'
+
+    | 'template'
+    | 'this'
+    | 'throw'
+    | 'true'
+    | 'try'
+    | 'typeid'
+    | 'typeof'
+
+    | 'ubyte'
+    | 'ucent'
+    | 'uint'
+    | 'ulong'
+    | 'union'
+    | 'unittest'
+    | 'ushort'
+
+    | 'version'
+    | 'void'
+
+    | 'wchar'
+    | 'while'
+    | 'with'
+
+    | '__FILE__'
+    | '__FILE_FULL_PATH__'
+    | '__MODULE__'
+    | '__LINE__'
+    | '__FUNCTION__'
+    | '__PRETTY_FUNCTION__'
+
+    | '__gshared'
+    | '__traits'
+    | '__vector'
+    | '__parameters';
+
+
+SpecialTokenSequence:
+    '#' 'line' IntegerLiteral EndOfLine
+    | '#' 'line' IntegerLiteral Filespec EndOfLine;
+
+Filespec:
+    '"' Characters '"';

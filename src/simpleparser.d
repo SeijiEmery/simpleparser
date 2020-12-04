@@ -24,13 +24,21 @@ int main (string[] args) {
         processFile("dlang.ebnf");
     }
     import core.stdc.stdlib;
-    exit(0);
     return 0;
 }
 
 class ParseException : Exception {
     mixin basicExceptionCtors;
 }
+
+import std.experimental.allocator;
+import std.experimental.allocator.building_blocks.allocator_list;
+import std.experimental.allocator.building_blocks.region;
+import std.experimental.allocator.mallocator;
+import std.algorithm;
+
+alias TermAllocator = AllocatorList!((n) => Region!Mallocator(max(n, n * 768)));//1024)));
+TermAllocator termAllocator;    // use a specific allocator for term memory for high locality
 
 struct EBNF {
     /// tagged union types
@@ -78,14 +86,6 @@ struct EBNF {
 
     ~this () { patterns.clear; termAllocator.deallocateAll; }
 
-    import std.experimental.allocator;
-    import std.experimental.allocator.building_blocks.allocator_list;
-    import std.experimental.allocator.building_blocks.region;
-    import std.experimental.allocator.mallocator;
-    import std.algorithm;
-
-    alias TermAllocator = AllocatorList!((n) => Region!Mallocator(max(n, n * 768)));//1024)));
-    TermAllocator termAllocator;    // use a specific allocator for term memory for high locality
     Term*[] allocatedTerms;         // list of all allocated terms for debugging purposes
 
     Term* makeTerm (Type type) {    // allocate everything from here
@@ -137,6 +137,10 @@ struct EBNF {
     }
     /// construct a new either A / B / C / ... term
     Term* either (Term*[] terms) {
+        if (terms[0].type == Type.EITHER) {
+            terms[0].terms ~= terms[1..$];
+            return terms[0];
+        }
         auto term = makeTerm(Type.EITHER);
         term.terms = terms;
         return term;
@@ -176,7 +180,7 @@ struct EBNF {
         }
     }
     private void printRecursive(Term* term, scope void delegate(const(char)[]) sink) {
-        final switch (term.type & 0xF) {
+        switch (term.type & 0xF) {
             case Type.NONE: sink("missing reference..."); return;
             case Type.LITERAL: sink("'"); sink(term.text); sink("'"); break;
             case Type.TREF: sink(term.tref); break;
@@ -190,6 +194,7 @@ struct EBNF {
                     if (i) sink(" | "); 
                     printRecursive(child, sink); 
                 } sink(")"); break;
+            default:
         }
         final switch (term.type & 0xF0) {
             case Type.NONE: break;
@@ -232,6 +237,12 @@ struct EBNF {
         import std.algorithm: filter;
         return patterns.keys.filter!((key) => patterns[key].type == Type.NONE);
     }
+    auto literals () {
+        import std.algorithm: filter, map;
+        return allocatedTerms
+            .filter!((term) => (term.type & Type.LITERAL) != 0)
+            .map!((term) => term.text);
+    }
 }
 
 /// read an ebnf file using D-like ebnf syntax:
@@ -258,12 +269,18 @@ EBNF readEBNF (string fileName, string text) {
     //}
 
     ebnf.dumpTermMemory();
-    writeln();
+    //writeln();
 
     import std.array;
     auto missingTerms = ebnf.undefinedTerms.array;
     writefln("%s undefined term(s): %s", missingTerms.length, missingTerms.join(", "));
     //writefln("ok");
+
+    auto literals = ebnf.literals.array;
+    writefln("%s literal(s): %s", literals.length, literals.join(", "));
+
+    auto uniqueLiterals = literals.sort.uniq.array;
+    writefln("\n%s unique literal(s): %s", uniqueLiterals.length, uniqueLiterals.join(", "));
 
     return ebnf;
 }
@@ -304,12 +321,12 @@ void parseDecl (ref EBNF ebnf, ref string input) {
     ebnf.decl(name, terms);
 }
 
-Term* parseLiteral (ref EBNF ebnf, ref string input) {
+Term* parseLiteral (ref EBNF ebnf, ref string input, string delim = "'") {
     //writefln("parseLiteral '%s'", input.sliceUpTo(20));
 
-    auto split = input.findSplit("'");
+    auto split = input.findSplit(delim);
     enforce(split[1].length,
-        format("missing `'` at end of string literal starting with '%s'", input.sliceUpTo(20)));
+        format("missing `%s` at end of string literal starting with '%s'", delim, input.sliceUpTo(20)));
     input = split[2];
     //writefln(" => `%s` `%s` `%s`", split[0], split[1], split[2].sliceUpTo(20));
     return ebnf.literal(split[0]);
@@ -324,10 +341,11 @@ Term* parseTermSeq (ref EBNF ebnf, ref string input) {
 
     Term*[] terms;
     do {
-        auto match = input.match(ctRegex!r"^\s*(['\(\);])");
+        auto match = input.match(ctRegex!(r"^\s*(['\`"~`"`~r"(\);])"));
         if (!match) { terms ~= ebnf.parseTRef(input); }
-        else if (match.captures[1] == "'") { input = match.post; terms ~= ebnf.parseLiteral(input); }
-        else if (match.captures[1] == "(") { 
+        else if (match.captures[1] == "'" || match.captures[1] == `"` || match.captures[1] == "`") {
+            input = match.post; terms ~= ebnf.parseLiteral(input, match.captures[1]);
+        } else if (match.captures[1] == "(") { 
             input = match.post; 
             terms ~= ebnf.parseTermSeq(input);
             match = input.match(ctRegex!r"^\s*([\);])");
