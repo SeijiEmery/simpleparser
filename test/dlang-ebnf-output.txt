@@ -1,16 +1,17 @@
 dlang.ebnf
 10 term atom(s) allocated:
-  7fa799027200 |  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0      NONE   
-  7fa799027220 |  2 0 0 0 0 0 0 0 d 0 0 0 0 0 0 0b1c7f9 5 1 0 0 0      TREF   'mulExpression' at 7fa799027200 (string memory at 105f9c7b1)
-  7fa799027240 |  8 0 0 0 0 0 0 0 2 0 0 0 0 0 0 0 0c027 6 1 0 0 0    EITHER    => [ 7fa799027220 7fa799027320 ] (array memory at 10627c000)
-  7fa799027260 |  2 0 0 0 0 0 0 0 d 0 0 0 0 0 0 0a3c7f9 5 1 0 0 0      TREF   'addExpression' at 7fa799027240 (string memory at 105f9c7a3)
-  7fa799027280 |  1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 013c7f9 5 1 0 0 0   LITERAL   '+' (string memory at 105f9c713)
-  7fa7990272a0 |  1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0bfc7f9 5 1 0 0 0   LITERAL   '-' (string memory at 105f9c7bf)
-  7fa7990272c0 |  1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0c1c7f9 5 1 0 0 0   LITERAL   '~' (string memory at 105f9c7c1)
-  7fa7990272e0 | 28 0 0 0 0 0 0 0 3 0 0 0 0 0 0 0a0c027 6 1 0 0 0    EITHER +  => [ 7fa799027280 7fa7990272a0 7fa7990272c0 ] (array memory at 10627c0a0)
-  7fa799027300 |  2 0 0 0 0 0 0 0 d 0 0 0 0 0 0 0b1c7f9 5 1 0 0 0      TREF   'mulExpression' at 7fa799027200 (string memory at 105f9c7b1)
-  7fa799027320 |  4 0 0 0 0 0 0 0 3 0 0 0 0 0 0 060c027 6 1 0 0 0  SEQUENCE    => [ 7fa799027260 7fa7990272e0 7fa799027300 ] (array memory at 10627c060)
+  7f9637827200 |  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0      NONE   
+  7f9637827220 |  2 0 0 0 0 0 0 0 d 0 0 0 0 0 0 0 152a3 5 1 0 0 0      TREF   'mulExpression' at 7f9637827200 (string memory at 105a35201)
+  7f9637827240 |  8 0 0 0 0 0 0 0 2 0 0 0 0 0 0 0 090d1 5 1 0 0 0    EITHER    => [ 7f9637827220 7f9637827320 ] (array memory at 105d19000)
+  7f9637827260 |  2 0 0 0 0 0 0 0 d 0 0 0 0 0 0 0f351a3 5 1 0 0 0      TREF   'addExpression' at 7f9637827240 (string memory at 105a351f3)
+  7f9637827280 |  1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 06351a3 5 1 0 0 0   LITERAL   '+' (string memory at 105a35163)
+  7f96378272a0 |  1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 f52a3 5 1 0 0 0   LITERAL   '-' (string memory at 105a3520f)
+  7f96378272c0 |  1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 01152a3 5 1 0 0 0   LITERAL   '~' (string memory at 105a35211)
+  7f96378272e0 | 28 0 0 0 0 0 0 0 3 0 0 0 0 0 0 0a090d1 5 1 0 0 0    EITHER +  => [ 7f9637827280 7f96378272a0 7f96378272c0 ] (array memory at 105d190a0)
+  7f9637827300 |  2 0 0 0 0 0 0 0 d 0 0 0 0 0 0 0 152a3 5 1 0 0 0      TREF   'mulExpression' at 7f9637827200 (string memory at 105a35201)
+  7f9637827320 |  4 0 0 0 0 0 0 0 3 0 0 0 0 0 0 06090d1 5 1 0 0 0  SEQUENCE    => [ 7f9637827260 7f96378272e0 7f9637827300 ] (array memory at 105d19060)
 
+1 undefined term(s): mulExpression
 ebnf 'dlang.ebnf', 2 pattern(s):
   addExpression:
       mulExpression

@@ -31,34 +31,50 @@ class ParseException : Exception {
 }
 
 struct EBNF {
+    /// tagged union types
     enum Type {
+        // note that these are -structural- types
         NONE         = 0x00,
-        LITERAL      = 0x01, 
-        TREF         = 0x02,
-        SEQUENCE     = 0x04,
-        EITHER       = 0x08,
-        ZERO_OR_ONE  = 0x10,
-        ZERO_OR_MORE = 0x30,
-        ONE_OR_MORE  = 0x20,
+        LITERAL      = 0x01,    // literal (ie. owns a string)
+        TREF         = 0x02,    // term reference (owns a string; could be changed to a direct size_t index in the future)
+        SEQUENCE     = 0x04,    // sequence of multiple terms
+        EITHER       = 0x08,    // match -any- of these term(s)
+
+        // and these are type -additions-, ie. a term of one
+        // of the existing types may also:
+        ZERO_OR_ONE  = 0x10,    // may match nothing (ie. '?') 
+        ONE_OR_MORE  = 0x20,    // may match multiple arguments (ie. '+')
+        ZERO_OR_MORE = 0x30,    // may match nothing, something, or multiple args (ie. '*')
+
+        // note that the layout here is intentional, ie. 
+        //  0xf & type  => base type (NONE | LITERAL | TREF | SEQUENCE | EITHER)
+        //  type & 0xf0 => type additions (NONE | ZERO_OR_ONE | ONE_OR_MORE | ZERO_OR_MORE)
+        //  type >> 4   => 0x0 (N/A) | 0x1 (?) | 0x2 (+) | 0x3 (*)
     }
+
+    /// tagged union of all term types. 
+    /// small atom struct: has size in the range of ~3 * size_t.sizeof bytes, fwiw
     struct Term {
         Type type;
         union {
-            struct { Term*[] terms = null; }
-            struct { Term*  term; }
-            struct { string tref; }
-            struct { string text; }
+            struct { Term*[] terms = null; } // SEQUENCE | EITHER
+            struct { Term*  term; } // unused...?
+            struct { string tref; } // TREF
+            struct { string text; } // LITERAL
         }
     }
+
+    /// file name for printing purposes
     string fileName;
+
+    /// list of all patterns (our defn is Pattern = PatternName => Term)
     Term*[string] patterns;
-
-    ~this () { patterns.clear; termAllocator.deallocateAll; }
-
 
     //
     // memory management
     // 
+
+    ~this () { patterns.clear; termAllocator.deallocateAll; }
 
     import std.experimental.allocator;
     import std.experimental.allocator.building_blocks.allocator_list;
@@ -70,12 +86,16 @@ struct EBNF {
     TermAllocator termAllocator;    // use a specific allocator for term memory for high locality
     Term*[] allocatedTerms;         // list of all allocated terms for debugging purposes
 
-    Term* makeTerm (Type type) {
+    Term* makeTerm (Type type) {    // allocate everything from here
         //writefln("create %s", type); 
         auto term = termAllocator.make!Term(type);
         allocatedTerms ~= term;
         return term;
     }
+
+    // term ctors
+
+    /// construct + insert a new pattern declaration, which implicitely is an EITHER term
     Term* decl (string name, Term*[] options) {
         enforce(name !in patterns || patterns[name].type == Type.NONE,
             format("already exists: '%s'", name));
@@ -86,11 +106,13 @@ struct EBNF {
         term.terms = options;
         return term;
     }
-    Term* literal (string text) {
-        auto term = makeTerm(Type.LITERAL);
-        term.text = text;
-        return term;
-    }
+    /// construct a term reference term (ie. string name => term pattern lookup)
+    /// note that our behavior here is a bit special, and quite deliberate:
+    /// - we pre-allocate empty terms for term refs that haven't been defined yet
+    /// - this makes finding undefined terms trivial (just sweep for None types in patterns)
+    /// - it also guarantees that any term reference lookup from an inserted / allocated
+    ///   tref will always return a valid Term* pointer, and thus we should -never-
+    ///   need to check for null on the result of `patterns[tref.name]`
     Term* tref (string name) {
         if (name !in patterns) {
             patterns[name] = makeTerm(Type.NONE);
@@ -99,20 +121,39 @@ struct EBNF {
         term.tref = name;
         return term;
     }
+    /// construct a new string literal term
+    Term* literal (string text) {
+        auto term = makeTerm(Type.LITERAL);
+        term.text = text;
+        return term;
+    }
+    /// construct a new linear sequence of terms term
     Term* seq (Term*[] terms) {
         auto term = makeTerm(Type.SEQUENCE);
         term.terms = terms;
         return term;
     }
+    /// construct a new either A / B / C / ... term
     Term* either (Term*[] terms) {
         auto term = makeTerm(Type.EITHER);
         term.terms = terms;
         return term;
     }
+    /// "construct" (actually just modify) a one-or-more term (ie '+')
     Term* oneOrMore (Term* term) { term.type |= Type.ONE_OR_MORE; return term; }
+
+    /// "construct" (actually just modify) a zero-or-one term (ie '?')
     Term* optional  (Term* term) { term.type |= Type.ZERO_OR_ONE; return term; }
+
+    /// "construct" (actually just modify) a zero-or-more term (ie '*')
     Term* zeroOrMore (Term* term) { term.type |= Type.ZERO_OR_MORE; return term; }
 
+    //
+    // pretty printing
+    //
+
+    /// pretty print ebnf contents in a similar-ish format to d's ebnf notation,
+    /// but with 'MISSING REFERENCE' inserted for missing / referenced-but-not-defined named terms / patterns
     void toString (scope void delegate(const(char)[]) sink) {
         import std.conv: to;
         sink("ebnf '"); sink(fileName); sink("', ");
@@ -156,6 +197,10 @@ struct EBNF {
         }
     }
 
+    //
+    // memory debug printing
+    //
+
     void dumpTermMemory () {
         writefln("%s term atom(s) allocated:", allocatedTerms.length);
         foreach (term; allocatedTerms) {
@@ -176,7 +221,20 @@ struct EBNF {
         }
     }
 
+    //
+    // utility functions
+    //
+
+    /// get a lazy list of undefined term(s) in this EBNF file
+    auto undefinedTerms () {
+        import std.algorithm: filter;
+        return patterns.keys.filter!((key) => patterns[key].type == Type.NONE);
+    }
 }
+
+/// read an ebnf file using D-like ebnf syntax:
+/// - terms are separated using '|'
+/// - term declarations are whitespace insensitive (but pretty printed), and always terminated with ';'
 EBNF readEBNF (string fileName, string text) {
     auto ebnf = EBNF(fileName);
     ebnf.decl("addExpression", [
@@ -191,6 +249,10 @@ EBNF readEBNF (string fileName, string text) {
 
     ebnf.dumpTermMemory();
     writeln();
+
+    import std.array;
+    auto missingTerms = ebnf.undefinedTerms.array;
+    writefln("%s undefined term(s): %s", missingTerms.length, missingTerms.join(", "));
     //writefln("ok");
 
     return ebnf;
