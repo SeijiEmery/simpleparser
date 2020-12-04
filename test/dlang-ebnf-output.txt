@@ -1,0 +1,20 @@
+dlang.ebnf
+10 term atom(s) allocated:
+  7fa799027200 |  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0      NONE   
+  7fa799027220 |  2 0 0 0 0 0 0 0 d 0 0 0 0 0 0 0b1c7f9 5 1 0 0 0      TREF   'mulExpression' at 7fa799027200 (string memory at 105f9c7b1)
+  7fa799027240 |  8 0 0 0 0 0 0 0 2 0 0 0 0 0 0 0 0c027 6 1 0 0 0    EITHER    => [ 7fa799027220 7fa799027320 ] (array memory at 10627c000)
+  7fa799027260 |  2 0 0 0 0 0 0 0 d 0 0 0 0 0 0 0a3c7f9 5 1 0 0 0      TREF   'addExpression' at 7fa799027240 (string memory at 105f9c7a3)
+  7fa799027280 |  1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 013c7f9 5 1 0 0 0   LITERAL   '+' (string memory at 105f9c713)
+  7fa7990272a0 |  1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0bfc7f9 5 1 0 0 0   LITERAL   '-' (string memory at 105f9c7bf)
+  7fa7990272c0 |  1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0c1c7f9 5 1 0 0 0   LITERAL   '~' (string memory at 105f9c7c1)
+  7fa7990272e0 | 28 0 0 0 0 0 0 0 3 0 0 0 0 0 0 0a0c027 6 1 0 0 0    EITHER +  => [ 7fa799027280 7fa7990272a0 7fa7990272c0 ] (array memory at 10627c0a0)
+  7fa799027300 |  2 0 0 0 0 0 0 0 d 0 0 0 0 0 0 0b1c7f9 5 1 0 0 0      TREF   'mulExpression' at 7fa799027200 (string memory at 105f9c7b1)
+  7fa799027320 |  4 0 0 0 0 0 0 0 3 0 0 0 0 0 0 060c027 6 1 0 0 0  SEQUENCE    => [ 7fa799027260 7fa7990272e0 7fa799027300 ] (array memory at 10627c060)
+
+ebnf 'dlang.ebnf', 2 pattern(s):
+  addExpression:
+      mulExpression
+    | addExpression ('+' | '-' | '~')+ mulExpression
+    ;
+  mulExpression: MISSING REFERENCE
+
