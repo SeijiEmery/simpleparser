@@ -6,6 +6,8 @@ import std.stdio;
 import std.exception: basicExceptionCtors, enforce;
 import std.format;
 import std.variant;
+import std.algorithm;
+import std.regex;
 
 int main (string[] args) {
     void processFile (string file) {
@@ -237,15 +239,23 @@ struct EBNF {
 /// - term declarations are whitespace insensitive (but pretty printed), and always terminated with ';'
 EBNF readEBNF (string fileName, string text) {
     auto ebnf = EBNF(fileName);
-    ebnf.decl("addExpression", [
-        ebnf.tref("mulExpression"),
-        ebnf.seq([
-            ebnf.tref("addExpression"),
-            ebnf.oneOrMore(
-                ebnf.either([ ebnf.literal("+"), ebnf.literal("-"), ebnf.literal("~") ])),
-            ebnf.tref("mulExpression")
-        ])
-    ]);
+    //ebnf.decl("addExpression", [
+    //    ebnf.tref("mulExpression"),
+    //    ebnf.seq([
+    //        ebnf.tref("addExpression"),
+    //        ebnf.oneOrMore(
+    //            ebnf.either([ ebnf.literal("+"), ebnf.literal("-"), ebnf.literal("~") ])),
+    //        ebnf.tref("mulExpression")
+    //    ])
+    //]);
+
+    //try {
+        while (text.length) {
+            ebnf.parseDecl(text);
+        }
+    //} catch (ParseException e) {
+    //    writefln("%s", e);
+    //}
 
     ebnf.dumpTermMemory();
     writeln();
@@ -258,4 +268,104 @@ EBNF readEBNF (string fileName, string text) {
     return ebnf;
 }
 
+string sliceUpTo (string s, size_t n) { return n < s.length ? s[0..n] : s; }
 
+string parseId (ref string input) {
+    //writefln("parseId '%s'", input.sliceUpTo(20));
+
+    auto match = input.match(ctRegex!r"^\s*([a-zA-Z_][a-zA-Z_\-0-9]*)");
+    enforce!ParseException(match, format("expected identifier, got '%s'", input.sliceUpTo(20)));
+    input = match.post;
+    return match.captures[1];
+}
+
+alias Term = EBNF.Term;
+
+void parseDecl (ref EBNF ebnf, ref string input) {
+    //writefln("parseDecl '%s'", input.sliceUpTo(20));
+
+    auto name = input.parseId;
+    auto match = input.matchFirst(ctRegex!r"^\s*\:");
+    enforce!ParseException(match, 
+        format("expected ':' after id in pattern decl, but got '%s'",
+            input.sliceUpTo(20)));
+    input = match.post;
+
+    Term*[] terms;
+    do {
+        terms ~= ebnf.parseTermSeq(input);
+        match = input.matchFirst(ctRegex!r"^\s*([\|;])");
+        enforce!ParseException(match,
+            format("expected '|' or ';', got '%s'", input.sliceUpTo(20)));
+        input = match.post;
+        if (match[1] == ";") break;
+    } while (true);
+
+    ebnf.decl(name, terms);
+}
+
+Term* parseLiteral (ref EBNF ebnf, ref string input) {
+    //writefln("parseLiteral '%s'", input.sliceUpTo(20));
+
+    auto split = input.findSplit("'");
+    enforce(split[1].length,
+        format("missing `'` at end of string literal starting with '%s'", input.sliceUpTo(20)));
+    input = split[2];
+    //writefln(" => `%s` `%s` `%s`", split[0], split[1], split[2].sliceUpTo(20));
+    return ebnf.literal(split[0]);
+}
+Term* parseTRef (ref EBNF ebnf, ref string input) {
+    //writefln("parseTRef '%s'", input.sliceUpTo(20));
+
+    return ebnf.tref(input.parseId);
+}
+Term* parseTermSeq (ref EBNF ebnf, ref string input) {
+    //writefln("parseTermSeq '%s'", input.sliceUpTo(20));
+
+    Term*[] terms;
+    do {
+        auto match = input.match(ctRegex!r"^\s*(['\(\);])");
+        if (!match) { terms ~= ebnf.parseTRef(input); }
+        else if (match.captures[1] == "'") { input = match.post; terms ~= ebnf.parseLiteral(input); }
+        else if (match.captures[1] == "(") { 
+            input = match.post; 
+            terms ~= ebnf.parseTermSeq(input);
+            match = input.match(ctRegex!r"^\s*([\);])");
+            enforce!ParseException(match,
+                format("expected ')' or ';', got '%s'", input.sliceUpTo(20)));
+            if (match.captures[1] == ")") { input = match.post; }
+            else if (match.captures[1] == ";") break;
+            else assert(0);
+        } else if (match.captures[1] == ")" || match.captures[1] == ";") break;
+        else assert(0);
+
+        //writefln("finished parsing term; at '%s'", input.sliceUpTo(20));
+
+        assert(terms.length);
+        match = input.match(ctRegex!r"^\s*([\*\+\?])");
+        if (!match) {}
+        else if (match.captures[1] == "*") { input = match.post; terms[$-1] = ebnf.zeroOrMore(terms[$-1]); }
+        else if (match.captures[1] == "+") { input = match.post; terms[$-1] = ebnf.oneOrMore(terms[$-1]); }
+        else if (match.captures[1] == "?") { input = match.post; terms[$-1] = ebnf.optional(terms[$-1]); }
+        else assert(0);
+
+        match = input.match(ctRegex!r"^\s*([\|])");
+        if (match && match.captures[1] == "|") { input = match.post; goto parseEither; }
+    } while (1);
+    enforce!ParseException(terms.length,
+        format("expected term(s), got '%s'", input.sliceUpTo(20)));
+    return terms.length > 1 ? ebnf.seq(terms) : terms[0];
+parseEither:
+    assert(terms.length);
+    if (terms.length > 1) terms = [ ebnf.seq(terms) ];
+    terms ~= ebnf.parseTermSeq(input);
+    while (true) {
+        auto match = input.match(ctRegex!r"^\s*(\|)");
+        if (match) {
+            input = match.post;
+            terms ~= ebnf.parseTermSeq(input);
+        } else break;
+    }
+    assert(terms.length > 1);
+    return ebnf.either(terms);
+}
