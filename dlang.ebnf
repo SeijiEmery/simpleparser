@@ -5,7 +5,7 @@
  aliasDeclaration:
        'alias' aliasInitializer (',' aliasInitializer)* ';'
      | 'alias' storageClass* type declaratorIdentifierList ';'
-     | 'alias' storageClass* type identifier '(') parameters '' * ';'
+     | 'alias' storageClass* type identifier '(' parameters '' * ';'
      ;
  aliasInitializer:
        Identifier templateParameters? '=' storageClass* type
@@ -93,7 +93,7 @@
      | FloatLiteral
      | StringLiteral
      | register
-     | register : AsmExp
+     | register ':' AsmExp
      | identifierChain
      | '$'
      | 'this'
@@ -173,7 +173,7 @@
      | atAttribute
      | linkageAttribute
      | 'export'
-     | 'package' ("(") identifierChain "")?
+     | 'package' ('(' identifierChain ')')?
      | 'private'
      | 'protected'
      | 'public'
@@ -464,7 +464,7 @@
      | (storageClass+ | type) Identifier templateParameters parameters memberFunctionAttribute* constraint? (functionBody | ';')
      ;
  functionLiteralExpression:
-     | 'delegate' 'ref'? type? (parameters functionAttribute*)? specifiedFunctionBody
+       'delegate' 'ref'? type? (parameters functionAttribute*)? specifiedFunctionBody
      | 'function' 'ref'? type? (parameters functionAttribute*)? specifiedFunctionBody
      | 'ref'? parameters functionAttribute* specifiedFunctionBody
      | specifiedFunctionBody
@@ -474,7 +474,7 @@
      | 'ref'? parameters functionAttribute* '=>' assignExpression
      ;
  gccAsmInstruction:
-     | expression ':' gccAsmOperandList? (':' gccAsmOperandList? (':' stringLiteralList)? )? ';'
+       expression ':' gccAsmOperandList? (':' gccAsmOperandList? (':' stringLiteralList)? )? ';'
      | expression ':' ':' gccAsmOperandList? ':' stringLiteralList ';' ':' declaratorIdentifierList ';'
      ;
  gccAsmOperandList:
@@ -507,6 +507,7 @@
      ;
  ifStatement:
      'if' '(' ifCondition ')' declarationOrStatement ('else' declarationOrStatement)?
+     ;
  ifCondition:
        'auto' Identifier '=' expression
      | typeConstructors Identifier '=' expression
@@ -768,10 +769,10 @@
      'scope' '(' Identifier ')' statementNoCaseNoDefault
      ;
  sharedStaticConstructor:
-     'shared' 'static' 'this' '(' ')' memberFunctionAttribute* (functionBody | ";")
+     'shared' 'static' 'this' '(' ')' memberFunctionAttribute* (functionBody | ';')
      ;
  sharedStaticDestructor:
-     'shared' 'static' '~' 'this' '(' ')' memberFunctionAttribute* (functionBody | ";")
+     'shared' 'static' '~' 'this' '(' ')' memberFunctionAttribute* (functionBody | ';')
      ;
  shiftExpression:
        addExpression
@@ -825,10 +826,10 @@
      'static' assertExpression ';'
      ;
  staticConstructor:
-     'static' 'this' '(' ')' memberFunctionAttribute* (functionBody | ";")
+     'static' 'this' '(' ')' memberFunctionAttribute* (functionBody | ';')
      ;
  staticDestructor:
-     'static' '~' 'this' '(' ')' memberFunctionAttribute* (functionBody | ";")
+     'static' '~' 'this' '(' ')' memberFunctionAttribute* (functionBody | ';')
      ;
  staticIfCondition:
      'static' 'if' '(' assignExpression ')'
